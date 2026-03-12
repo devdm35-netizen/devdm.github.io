@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-
+import DropZone from "./components/dropZone";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -81,7 +81,7 @@ export default function App() {
   const [photoHeight, setPhotoHeight] = useState(4);
   const [copies, setCopies] = useState(1);
   const [guillotine, setGuillotine] = useState(true);
-
+const [infantilMode, setInfantilMode] = useState(false);
   const SHEET_W = 21.6;
   const SHEET_H = 27.9;
 
@@ -160,6 +160,7 @@ export default function App() {
     images.forEach(img => URL.revokeObjectURL(img.url));
     setImages([]);
     setUndoStack([]);
+    setInfantilMode(false);
     setIneMode(false);
   };
 
@@ -194,16 +195,23 @@ export default function App() {
   }, [images, undoStack]);
 
   // preset infantil
-  const presetInfantil = (num) => {
-    if (images.length === 0) return;
-    const base = images[0];
-    const newImgs = [];
-    for (let i = 0; i < num; i++) newImgs.push({ id: crypto.randomUUID(), url: base.url });
-    setPhotoWidth(3.5);
-    setPhotoHeight(4.5);
-    setImages(newImgs);
-    setIneMode(false);
-  };
+const presetInfantil = (num) => {
+  if (images.length === 0) return;
+
+  const base = images[0];
+  const newImgs = [];
+
+  for (let i = 0; i < num; i++) {
+    newImgs.push({ id: crypto.randomUUID(), url: base.url });
+  }
+
+  setPhotoWidth(2.5);
+  setPhotoHeight(3.5);
+  setImages(newImgs);
+
+  setIneMode(false);
+  setInfantilMode(true); // activar modo infantil
+};
 
   // preset INE
   const presetINE = () => {
@@ -224,7 +232,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1>EDITA TU DOCUMENTO</h1>
+     <div className="head">
+       <h1 className="title">EDITA TU DOCUMENTO</h1>
+     </div>
 
       <div className="panel">
         <label className="data">Ancho (cm)</label>
@@ -237,11 +247,12 @@ export default function App() {
         <input className="inpData" type="number" value={copies} onChange={e => setCopies(Number(e.target.value))} />
 
         <input className="inpDataF" type="file" multiple onChange={handleUpload} />
-
-        <button className="btnBlue" onClick={() => presetInfantil(6)}>6 Fotos Infantil</button>
+        
+         <button className="btnGreen" onClick={exportPDF}>Exportar PDF</button>
         <button className="btnBlue" onClick={() => presetInfantil(12)}>12 Fotos Infantil</button>
+        <button className="btnBlue" onClick={() => presetInfantil(6)}>6 Fotos Infantil</button>
         <button className="btnBlack" onClick={presetINE}>INE Frente / Reverso</button>
-        <button className="btnGreen" onClick={exportPDF}>Exportar PDF</button>
+     
         <button className="btnRed" onClick={cleanAll}>Limpiar Todo</button>
 
         <div className="switchContainer">
@@ -257,7 +268,13 @@ export default function App() {
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sortedIds} strategy={rectSortingStrategy}>
             {sheetsArr.map((sheet, index) => (
-              <div key={index} className={`sheet ${ineMode ? "sheetINE" : ""}`}>
+            <div
+  key={index}
+  className={`sheet 
+    ${ineMode ? "sheetINE" : ""} 
+    ${infantilMode ? "sheetTop" : ""}
+  `}
+>
                 {sheet.map(img => (
                   <Photo
                     key={img.id}
@@ -273,6 +290,10 @@ export default function App() {
           </SortableContext>
         </DndContext>
       </div>
+      <DropZone
+  onFiles={addImages}
+  hasImages={images.length > 0}
+/>
     </div>
   );
 }
