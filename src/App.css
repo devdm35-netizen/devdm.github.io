@@ -23,9 +23,20 @@ font-family:Arial;
    font-family: "Fjalla One", sans-serif;
   font-weight: 300;
   font-size: 70px;
-  color: #000000;
+  color: #000;
 }
 
+.rotateBtn{
+  position:absolute;
+  bottom:2px;
+  right:2px;
+  z-index:10;
+  background:white;
+  border:none;
+  cursor:pointer;
+  padding:3px 6px;
+  border-radius:4px;
+}
 
 .app{
 display:flex;

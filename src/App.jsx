@@ -14,18 +14,18 @@ import { CSS } from "@dnd-kit/utilities";
 
 import "./App.css";
 
+
 // Componente Photo
-function Photo({ img, onDelete, width, height, guillotine }) {
+function Photo({ img, onDelete, width, height, guillotine, onRotate }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: img.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    width: `${width}cm`,
-    height: `${height}cm`,
-    position: "relative",
-  };
-
+const style = {
+  transform: CSS.Transform.toString(transform),
+  transition,
+  width: `${width}cm`,
+  height: `${height}cm`,
+  position: "relative",
+};
   return (
     <div
       ref={setNodeRef}
@@ -64,8 +64,22 @@ function Photo({ img, onDelete, width, height, guillotine }) {
       >
         ✕
       </button>
-
-      <img src={img.url} alt="foto" style={{ width: "100%", height: "100%" }} />
+<button
+  className="rotateBtn"
+  onClick={(e) => {
+    e.stopPropagation();
+    onRotate(img.id);
+  }}
+>
+🔄
+</button>
+      <img   src={img.url}
+  alt="foto"
+  style={{
+    width: "100%",
+    height: "100%",
+    transform: `rotate(${img.rotation || 0}deg)`
+  }} />
     </div>
   );
 }
@@ -80,7 +94,7 @@ export default function App() {
   const [photoWidth, setPhotoWidth] = useState(3);
   const [photoHeight, setPhotoHeight] = useState(4);
   const [copies, setCopies] = useState(1);
-  const [guillotine, setGuillotine] = useState(true);
+  const [guillotine, setGuillotine] = useState(false);
 const [infantilMode, setInfantilMode] = useState(false);
   const SHEET_W = 21.6;
   const SHEET_H = 27.9;
@@ -101,24 +115,25 @@ const [infantilMode, setInfantilMode] = useState(false);
     const newImgs = [];
     Array.from(files).forEach(file => {
       for (let i = 0; i < copies; i++) {
-        newImgs.push({ id: crypto.randomUUID(), url: URL.createObjectURL(file) });
+        newImgs.push({ id: crypto.randomUUID(), url: URL.createObjectURL(file), rotation: 0 });
       }
     });
     setImages(prev => [...prev, ...newImgs]);
   };
 
   const handleUpload = (e) => addImages(e.target.files);
+const rotateImage = (id)=>{
+  setImages(prev=>{
+    return prev.map(img => 
+      img.id === id
+      ? {...img, rotation:(img.rotation + 90) % 360}
+      : img
+    )
+    
+  })
+}
+  
 
-  const handlePaste = (e) => {
-    for (let item of e.clipboardData.items) {
-      if (item.type.startsWith("image")) addImages([item.getAsFile()]);
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener("paste", handlePaste);
-    return () => window.removeEventListener("paste", handlePaste);
-  }, [copies]);
 
   // borrar imagen
   const deleteImage = (id) => {
@@ -283,6 +298,8 @@ const presetInfantil = (num) => {
                     height={safePhotoHeight}
                     guillotine={guillotine}
                     onDelete={deleteImage}
+                      onRotate={rotateImage}
+
                   />
                 ))}
               </div>
