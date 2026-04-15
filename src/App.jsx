@@ -325,12 +325,7 @@ setInfantilMode(false)
          <button className="btnGreen" onClick={exportPDF}>Exportar PDF</button>
         <button className="btnBlue" onClick={() => presetInfantil(12)}>12 Fotos Infantil</button>
         <button className="btnBlue" onClick={() => presetInfantil(6)}>6 Fotos Infantil</button>
-        <button
-className="btnBlack"
-onClick={()=>setFreeMode(!freeMode)}
->
-Modo Libre
-</button>
+    
         <button className="btnBlack" onClick={presetINE}>INE Frente / Reverso</button>
         <button
 className="btnBlue"
