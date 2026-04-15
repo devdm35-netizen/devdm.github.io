@@ -18,13 +18,12 @@ import "./App.css";
 // Componente Photo
 function Photo({ img, onDelete, width, height, guillotine, onRotate }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: img.id });
-
 const style = {
-  transform: CSS.Transform.toString(transform),
-  transition,
-  width: `${width}cm`,
-  height: `${height}cm`,
-  position: "relative",
+transform: CSS.Transform.toString(transform),
+transition,
+width:`${width}cm`,
+height:`${height}cm`,
+
 };
   return (
     <div
@@ -71,15 +70,19 @@ const style = {
     onRotate(img.id);
   }}
 >
-🔄
+  🔄
 </button>
-      <img   src={img.url}
+<img
+  src={img.url}
   alt="foto"
+  draggable={false}
   style={{
     width: "100%",
     height: "100%",
+    objectFit: "contain",
     transform: `rotate(${img.rotation || 0}deg)`
-  }} />
+  }}
+/>
     </div>
   );
 }
@@ -91,33 +94,45 @@ export default function App() {
 
   const [images, setImages] = useState([]);
   const [undoStack, setUndoStack] = useState([]);
-  const [photoWidth, setPhotoWidth] = useState(3);
-  const [photoHeight, setPhotoHeight] = useState(4);
+  const [photoWidth, setPhotoWidth] = useState("3");
+  const [photoHeight, setPhotoHeight] = useState("4");
   const [copies, setCopies] = useState(1);
   const [guillotine, setGuillotine] = useState(false);
 const [infantilMode, setInfantilMode] = useState(false);
+const [freeMode,setFreeMode] = useState(true);
   const SHEET_W = 21.6;
   const SHEET_H = 27.9;
+const widthNum = Number(photoWidth) || 1;
+const heightNum = Number(photoHeight) || 1;
+const cols = Math.max(1, Math.floor(SHEET_W / widthNum));
+const rows = Math.max(1, Math.floor(SHEET_H / heightNum));
 
-  const cols = Math.max(1, Math.floor(SHEET_W / photoWidth));
-  const rows = Math.max(1, Math.floor(SHEET_H / photoHeight));
-  const perSheet = cols * rows;
+const perSheet = cols * rows;
 
-  const maxPhotoWidth = SHEET_W / cols;
-  const maxPhotoHeight = SHEET_H / rows;
-  const safePhotoWidth = Math.min(photoWidth, maxPhotoWidth);
-  const safePhotoHeight = Math.min(photoHeight, maxPhotoHeight);
+const maxPhotoWidth = SHEET_W / cols;
+const maxPhotoHeight = SHEET_H / rows;
+
+const safePhotoWidth = Math.max(1, Math.min(widthNum, maxPhotoWidth));
+const safePhotoHeight = Math.max(1, Math.min(heightNum, maxPhotoHeight));
 
   const sortedIds = useMemo(() => images.map(i => i.id), [images]);
 
   // agregar imágenes
   const addImages = (files) => {
     const newImgs = [];
-    Array.from(files).forEach(file => {
-      for (let i = 0; i < copies; i++) {
-        newImgs.push({ id: crypto.randomUUID(), url: URL.createObjectURL(file), rotation: 0 });
-      }
+    Array.from(files).forEach((file, fileIndex) => {
+  for (let i = 0; i < copies; i++) {
+    const index = fileIndex * copies + i;
+
+    newImgs.push({
+      id: crypto.randomUUID(),
+      url: URL.createObjectURL(file),
+      rotation: 0,
+      x: (index * 30) % 300,
+      y: Math.floor(index / 5) * 30
     });
+  }
+});
     setImages(prev => [...prev, ...newImgs]);
   };
 
@@ -147,6 +162,7 @@ const rotateImage = (id)=>{
     });
   };
 
+
   // drag
   const handleDragEnd = ({ active, over }) => {
     if (!over) return;
@@ -158,21 +174,43 @@ const rotateImage = (id)=>{
   };
 
   // exportar pdf
-  const exportPDF = async () => {
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
-    const sheetsDOM = previewRef.current.querySelectorAll(".sheet");
+const exportPDF = async () => {
 
-    for (let i = 0; i < sheetsDOM.length; i++) {
-      const canvas = await html2canvas(sheetsDOM[i], { scale: 3 });
-      const imgData = canvas.toDataURL("image/png");
-      if (i > 0) pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, 0, 216, 279);
-    }
-    pdf.save("fotos.pdf");
-  };
+  const buttons = document.querySelectorAll(".deleteBtn, .rotateBtn");
+  buttons.forEach(btn => btn.style.display = "none");
 
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
+  const sheetsDOM = previewRef.current.querySelectorAll(".sheet");
+
+  for (let i = 0; i < sheetsDOM.length; i++) {
+const canvas = await html2canvas(sheetsDOM[i], {
+  scale: 3,
+  useCORS: true,
+  backgroundColor: "#ffffff"
+});
+
+    const imgData = canvas.toDataURL("image/png");
+
+    // 🔥 AQUÍ va el cálculo correcto
+    const imgProps = pdf.getImageProperties(imgData);
+
+    const pdfWidth = 216;
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+    if (i > 0) pdf.addPage();
+pdf.addImage(imgData, "PNG", 0, 0, 215.9, 279.4);
+  }
+
+  pdf.save("fotos.pdf");
+
+  buttons.forEach(btn => btn.style.display = "block");
+};
   const cleanAll = () => {
-    images.forEach(img => URL.revokeObjectURL(img.url));
+images.forEach(img=>{
+if(img.url.startsWith("blob:")){
+URL.revokeObjectURL(img.url)
+}
+})
     setImages([]);
     setUndoStack([]);
     setInfantilMode(false);
@@ -220,6 +258,8 @@ const presetInfantil = (num) => {
     newImgs.push({ id: crypto.randomUUID(), url: base.url });
   }
 
+  
+
   setPhotoWidth(2.5);
   setPhotoHeight(3.5);
   setImages(newImgs);
@@ -244,7 +284,24 @@ const presetInfantil = (num) => {
     ]);
     setIneMode(true);
   };
+const presetTwoPhotos = ()=>{
 
+if(images.length===0) return
+
+const base = images[0]
+
+setImages([
+{ id:crypto.randomUUID(), url:base.url },
+{ id:crypto.randomUUID(), url:base.url }
+])
+
+setPhotoWidth(21.6)
+setPhotoHeight(13.9)
+
+setIneMode(false)
+setInfantilMode(false)
+
+}
   return (
     <div className="app">
      <div className="head">
@@ -253,10 +310,12 @@ const presetInfantil = (num) => {
 
       <div className="panel">
         <label className="data">Ancho (cm)</label>
-        <input className="inpData" type="number" value={photoWidth} onChange={e => setPhotoWidth(Number(e.target.value))} />
+        <input className="inpData"   type="number"
+  value={photoWidth}
+  onChange={(e) => setPhotoWidth(e.target.value)} />
 
         <label className="data">Alto (cm)</label>
-        <input className="inpData" type="number" value={photoHeight} onChange={e => setPhotoHeight(Number(e.target.value))} />
+        <input className="inpData" type="number" value={photoHeight} onChange={e => setPhotoHeight(e.target.value)} />
 
         <label className="data">Copias</label>
         <input className="inpData" type="number" value={copies} onChange={e => setCopies(Number(e.target.value))} />
@@ -266,7 +325,19 @@ const presetInfantil = (num) => {
          <button className="btnGreen" onClick={exportPDF}>Exportar PDF</button>
         <button className="btnBlue" onClick={() => presetInfantil(12)}>12 Fotos Infantil</button>
         <button className="btnBlue" onClick={() => presetInfantil(6)}>6 Fotos Infantil</button>
+        <button
+className="btnBlack"
+onClick={()=>setFreeMode(!freeMode)}
+>
+Modo Libre
+</button>
         <button className="btnBlack" onClick={presetINE}>INE Frente / Reverso</button>
+        <button
+className="btnBlue"
+onClick={presetTwoPhotos}
+>
+2 Fotos Media Hoja
+</button>
      
         <button className="btnRed" onClick={cleanAll}>Limpiar Todo</button>
 
@@ -288,6 +359,7 @@ const presetInfantil = (num) => {
   className={`sheet 
     ${ineMode ? "sheetINE" : ""} 
     ${infantilMode ? "sheetTop" : ""}
+    ${freeMode ? "freeSheet" : ""}
   `}
 >
                 {sheet.map(img => (
